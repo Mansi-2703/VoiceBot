@@ -1,0 +1,12 @@
+streamlit
+openai-whisper
+ollama
+torch
+torchaudio
+python-dotenv
+numpy
+scipy
+requests
+pydub
+librosa
+soundfile

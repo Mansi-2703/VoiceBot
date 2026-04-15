@@ -111,17 +111,27 @@ def run_pipeline(audio_input):
             result["intent"] = intents_array[0]["intent"]
             result["confidence"] = intents_array[0]["confidence"]
         
-        # Step 3: Execute each intent in sequence
-        for intent_obj in intents_array:
+        # Step 3: Execute each intent in sequence, chaining results for compound commands
+        last_result = None  # Store result from previous intent
+        
+        for i, intent_obj in enumerate(intents_array):
             intent_type = intent_obj["intent"]
-            params = intent_obj["extracted_params"]
+            params = intent_obj.get("extracted_params") or {}  # Handle None case
             
             tool_result = None
             
             if intent_type == "create_file":
+                # If previous intent was summarize_text or write_code, use its output as content
+                content = params.get("content", "")
+                if last_result:
+                    if "summary" in last_result:  # From summarize_text
+                        content = last_result["summary"]
+                    elif "code_preview" in last_result:  # From write_code (if no code_preview, use full code)
+                        content = last_result.get("code_preview", "")
+                
                 tool_result = create_file(
-                    filename=params.get("filename", "output.txt"),
-                    content=params.get("content", "")
+                    filename=params.get("filename", "summary.txt"),
+                    content=content
                 )
                 result["actions_taken"].append("create_file")
             
@@ -169,13 +179,14 @@ def run_pipeline(audio_input):
                     ])
                 
                 tool_result = general_chat(
-                    message=params.get("message", transcript),
+                    message=params.get("message") or transcript,
                     context=context
                 )
                 result["actions_taken"].append("general_chat")
             
             if tool_result:
                 result["results"].append(tool_result)
+                last_result = tool_result  # Save for next iteration
         
         # For backward compatibility, set action_taken and result to first action/result
         if result["actions_taken"]:

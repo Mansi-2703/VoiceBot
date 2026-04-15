@@ -47,19 +47,28 @@ Examples of compound commands:
 - "summarize this and save to summary.txt" → [summarize_text, create_file]
 - "create a file and tell me about it" → [create_file, general_chat]
 
+PARAMETER EXTRACTION RULES:
+
 For "write_code" intent, extract:
 - language: The programming language (Java, Python, JavaScript, C++, etc.)
 - filename: The output filename if mentioned
 - description: What the code should do
 
 For "create_file" intent, extract:
-- filename: The filename to create
-- content: The content to write
+- filename: The filename to create (default: "output.txt")
+- content: The exact content to write. If this will come from another intent (like summarize_text), leave this empty or null.
 
 For "summarize_text" intent, extract:
-- content: The text to summarize
+- content: THE FULL TEXT TO SUMMARIZE. This is critical - extract everything after keywords like "summarize", "text ahead", "as follows", "the text is", etc. Include all the text that needs to be summarized, even if very long.
 
-For "general_chat" intent, extract nothing or a message.
+For "general_chat" intent:
+- message: The user's message or query
+
+IMPORTANT:
+- For summarize_text, the "content" must be the complete text requiring summarization
+- When both summarize_text and create_file are detected, they will be executed in sequence
+- The summarized output from summarize_text will automatically be used as the content for create_file
+- Always return arrays of intents, even for single intent
 
 Respond ONLY with a JSON array of intents (no markdown):
 [
@@ -70,7 +79,7 @@ Respond ONLY with a JSON array of intents (no markdown):
       "language": "if write_code",
       "filename": "if mentioned",
       "description": "what to do",
-      "content": "if summarize or create_file"
+      "content": "FULL TEXT if summarize or create_file"
     }
   }
 ]

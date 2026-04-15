@@ -145,12 +145,21 @@ st.markdown("""
     .history-item {
         padding: 0.5rem 0;
         font-size: 13px;
-        color: #1a1a18;
+        color: #ffffff !important;
         border-bottom: 1px solid #e2e0da;
     }
     
     .history-item:last-child {
         border-bottom: none;
+    }
+    
+    .history-item a {
+        color: #ffffff !important;
+        text-decoration: none;
+    }
+    
+    .history-item a:hover {
+        text-decoration: underline;
     }
     
     /* Override primary button color */
@@ -393,17 +402,36 @@ if run_button:
         st.session_state.actions_taken = pipeline_result.get("actions_taken", [])
         st.session_state.error = pipeline_result.get("error", "")
         
-        # Handle result - extract relevant output
-        result_dict = pipeline_result.get("result", {})
-        if result_dict:
-            if st.session_state.action_taken == "write_code":
-                st.session_state.result = result_dict.get("code_preview", "")
-            elif st.session_state.action_taken == "create_file":
-                st.session_state.result = f"File created at: {result_dict.get('path', 'N/A')}"
-            elif st.session_state.action_taken == "summarize_text":
-                st.session_state.result = result_dict.get("summary", "")
+        # Handle result - extract relevant output based on actions
+        results_list = pipeline_result.get("results", [])
+        
+        # For compound commands, prefer the last/most important result
+        # (e.g., for "summarize then save", prefer the file creation confirmation)
+        result_to_display = None
+        
+        if results_list:
+            # If there's a create_file action, display that result (it's the final action)
+            if "create_file" in st.session_state.actions_taken:
+                # Find the create_file result
+                for result_dict in results_list:
+                    if result_dict.get("action") == "create_file":
+                        result_to_display = result_dict
+                        break
+            
+            # If still no result and there are results, use the last one
+            if result_to_display is None and results_list:
+                result_to_display = results_list[-1]
+        
+        # Format the result for display
+        if result_to_display:
+            if result_to_display.get("action") == "write_code":
+                st.session_state.result = result_to_display.get("code_preview", "")
+            elif result_to_display.get("action") == "create_file":
+                st.session_state.result = f"✓ File created at: {result_to_display.get('path', 'N/A')}"
+            elif result_to_display.get("action") == "summarize_text":
+                st.session_state.result = result_to_display.get("summary", "")
             else:  # general_chat
-                st.session_state.result = result_dict.get("response", "")
+                st.session_state.result = result_to_display.get("response", "")
         else:
             st.session_state.result = None
         
